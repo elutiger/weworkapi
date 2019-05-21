@@ -4,11 +4,11 @@
 包括企业API接口、消息回调处理方法、第三方开放接口等。本库仅做示范用，并不保证完全无bug；另外，作者会不定期更新本库，但不保证与官方API接口文档同步，因此一切以官方文档为准。
 
 ## Install
-**step 1**: $ composer require composer require elutiger/weworkapi-for-laravel5 "dev-master"
+**step 1**: $ composer require elutiger/weworkapi-for-laravel5 "dev-master"
 
-**step 2**: $  php artisan vendor:publish --provider "Elutiger/WeworkapiServiceProvider"
+**step 2**: $ php artisan vendor:publish --provider "Elutiger/WeworkapiServiceProvider"
 
-change the config in the file config/weworkapi.php
+change the config in the generated file "config/weworkapi.php"
 
 	// 请将下面参数改为自己的企业相关参数再进行测试
 
@@ -34,7 +34,7 @@ change the config in the file config/weworkapi.php
     "APPROVAL_APP_SECRET"   => "R79l0DKnrALsIK5J_DcjU7TzP-ipCjFKYOzBs53IC80",
 );
 
-**step 3**: add facade alias to the config file app.php, in the case below 
+**step 3**: add facade alias to the config file "config/app.php", in the case add code lines to the aliases array like below 
 
  'Weworkapi' => Elutiger\Weworkapi\Facades\Weworkapi::class,
  
