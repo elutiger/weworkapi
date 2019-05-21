@@ -1,0 +1,12 @@
+{
+    "name": "elutiger/weworkapi-for-laravel5",
+    "description": "weworkapi for laravel5",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "elutiger",
+            "email": "elutiger@qq.com"
+        }
+    ],
+    "require": {}
+}
