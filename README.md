@@ -39,14 +39,22 @@ change the config in the generated file "config/weworkapi.php"
  'Weworkapi' => Elutiger\Weworkapi\Facades\Weworkapi::class,
  
 ## Usage
-	$agentId = config('weworkapi.APP_ID');
-	$api = App::make('CorpAPI');
+	use Log;
+	use Weworkapi;
+	use Elutiger\Weworkapi\Message;
+	use Elutiger\Weworkapi\NewsMessageContent;
+	use Elutiger\Weworkapi\NewsArticle;
+
+	////////////////////////////////////////////////////////////
+
+		$agentId = config('weworkapi.APP_ID');
+		 
         try { 
             
                 $message = new Message();
                 {
                     $message->sendToAll = false;
-                    $message->touser = ['chenbiao'];
+                    $message->touser = ['userid'];
                     $message->toparty = [];
                     $message->totag = [];
                     $message->agentid = $agentId;
