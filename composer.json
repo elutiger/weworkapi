@@ -8,5 +8,17 @@
             "email": "elutiger@qq.com"
         }
     ],
+    "autoload": {
+        "psr-4": {
+            "Elutiger\\Weworkapi\\": "src/"
+        }
+    },  
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Elutiger\\Weworkapi\\WeworkapiServiceProvider"
+            ]
+        }
+    }, 
     "require": {}
 }
