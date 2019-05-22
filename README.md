@@ -35,7 +35,7 @@ change the config in the generated file "config/weworkapi.php"
 
 **step 3**: add facade alias to the config file "config/app.php", in the case add code lines to the aliases array like below 
 
- 'Weworkapi' => Elutiger\Weworkapi\Facades\Weworkapi::class,
+ 	'Weworkapi' => Elutiger\Weworkapi\Facades\Weworkapi::class,
  
 ## Usage
 	use Log;
@@ -46,7 +46,9 @@ change the config in the generated file "config/weworkapi.php"
 
 	////////////////////////////////////////////////////////////
 
-	$agentId = config('weworkapi.APP_ID');
+	$agent = config('weworkapi.AGENTS.WEWORK_APP_1');
+
+	Weworkapi::init(config('weworkapi.CORP_ID'), $agent['APP_SECRET']);
 		 
         try { 
             
@@ -56,7 +58,7 @@ change the config in the generated file "config/weworkapi.php"
                     $message->touser = ['userid'];
                     $message->toparty = [];
                     $message->totag = [];
-                    $message->agentid = $agentId;
+                    $message->agentid = $agent['APP_ID'];
                     $message->safe = 0;
 
                     $message->messageContent = new NewsMessageContent(

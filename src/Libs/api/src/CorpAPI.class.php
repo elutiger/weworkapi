@@ -53,7 +53,19 @@ class CorpAPI extends API
         $this->corpId = $corpId;
         $this->secret = $secret;
     }
+    /**
+     * @brief init : 初始化函数，
+     * @author elutiger, elutiger@qq.com
+     * @note 企业进行自定义开发调用, 请传参 corpid + secret, 不用关心accesstoken，本类会自动获取并刷新
+     */    
+    public function init($corpId = null, $secret=null)
+    {
+        Utils::checkNotEmptyStr($corpId, "corpid");
+        Utils::checkNotEmptyStr($secret, "secret");
 
+        $this->corpId = $corpId;
+        $this->secret = $secret;
+    }
 
     // ------------------------- access token ---------------------------------
     /**
@@ -688,7 +700,7 @@ class CorpAPI extends API
         }
 
         // 兼容php5.3-5.6 curl模块的上传操作
-	$args = array();
+    $args = array();
         if (class_exists('\CURLFile')) {
             $args = array('media' => new \CURLFile(realpath($filePath), 'application/octet-stream', basename($filePath)));
         } else {
@@ -732,7 +744,7 @@ class CorpAPI extends API
         self::_HttpCall(self::MEDIA_GET, 'GET', array('media_id'=>$media_id));
         return $this->rspRawStr;
     }
-	
+    
     /**
      * @brief MediaGet : 上传永久图片
      *
@@ -837,7 +849,7 @@ class CorpAPI extends API
         self::_HttpCall(self::GET_JSAPI_TICKET, 'GET', array()); 
         return $this->rspJson["ticket"];
     }
-	
+    
     /**
      * @brief JsApiSignatureGet : 计算jsapi的签名
      *
@@ -852,7 +864,7 @@ class CorpAPI extends API
      */
     public function JsApiSignatureGet($jsapiTicket, $nonceStr, $timestamp, $url)
     {
-    	$string = "jsapi_ticket=$jsapiTicket&noncestr=$nonceStr&timestamp=$timestamp&url=$url";
+        $string = "jsapi_ticket=$jsapiTicket&noncestr=$nonceStr&timestamp=$timestamp&url=$url";
         return sha1($string);
     }
 
