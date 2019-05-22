@@ -18,9 +18,16 @@ change the config in the generated file "config/weworkapi.php"
     // "通讯录同步"应用的secret, 开启api接口同步后，可以在管理端->"通讯录同步"看到
     "CONTACT_SYNC_SECRET"   => "RGVi7yFu5BzM00ijo20CR2SRYJKYQoGrAHyr_GSrT58",
 
-    // 某个自建应用的id及secret, 在管理端 -> 企业应用 -> 自建应用, 点进相应应用可以看到
-    "APP_ID"                => 1000002,
-    "APP_SECRET"            => "Q0yAyQhZ2pXt12pcMRq36g1dbrEci028GTVIDNyKqLg",
+	// 自建应用的id及secret, 在管理端 -> 企业应用 -> 自建应用, 点进相应应用可以看到
+    "AGENTS" => [
+        "WEWORK_APP_1" => [
+            "APP_ID"        => 1000002,
+            "APP_SECRET"    => "Q0yAyQhZ2pXt12pcMRq36g1dbrEci028GTVIDNyKqLg",  
+            "APP_NAME"      => "应用消息",
+            "APP_IDENTITY"  => "WEWORK_APP_1"   
+        ],
+       
+    ], 
 
     // 打卡应用的 id 及secrete， 在管理端 -> 企业应用 -> 基础应用 -> 打卡，
     // 点进去，有个"api"按钮，点开后，会看到
