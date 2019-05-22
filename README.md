@@ -47,7 +47,7 @@ change the config in the generated file "config/weworkapi.php"
 
 	////////////////////////////////////////////////////////////
 
-		$agentId = config('weworkapi.APP_ID');
+	$agentId = config('weworkapi.APP_ID');
 		 
         try { 
             
