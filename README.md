@@ -5,7 +5,7 @@
 ## Install
 **step 1**: $ composer require elutiger/weworkapi-for-laravel5 "dev-master"
 
-**step 2**: $ php artisan vendor:publish --provider "Elutiger/WeworkapiServiceProvider"
+**step 2**: $ php artisan vendor:publish --provider "Elutiger\Weworkapi\WeworkapiServiceProvider"
 
 change the config in the generated file "config/weworkapi.php"
 
