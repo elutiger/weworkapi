@@ -1,6 +1,6 @@
 ## About 
 
-**elutiger/weworkapi** 是**[weworkapi_php](https://github.com/sbzhu/weworkapi_php)**(official lib of wework api https://work.weixin.qq.com/api/doc)在laravel下的安装包，支持laravel5.5以上版本测试使用。本库仅做示范用，并不保证完全无bug；另外，作者会不定期更新本库，但不保证与官方API接口文档同步，因此一切以官方文档为准。
+**elutiger/weworkapi** 是**[weworkapi_php](https://github.com/sbzhu/weworkapi_php)** (official lib of wework api https://work.weixin.qq.com/api/doc) 在laravel下的安装包，支持laravel5.5以上版本测试使用。本库仅做示范用，并不保证完全无bug；另外，作者会不定期更新本库，但不保证与官方API接口文档同步，因此一切以官方文档为准。
 
 ## Install
 **step 1**: $ composer require elutiger/weworkapi-for-laravel5 "dev-master"
