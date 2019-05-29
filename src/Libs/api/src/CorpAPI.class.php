@@ -58,7 +58,7 @@ class CorpAPI extends API
      * @author elutiger, elutiger@qq.com
      * @note 企业进行自定义开发调用, 请传参 corpid + secret, 不用关心accesstoken，本类会自动获取并刷新
      */    
-    public function init($corpId = null, $secret=null)
+    public function init($corpId=null, $secret=null)
     {
         Utils::checkNotEmptyStr($corpId, "corpid");
         Utils::checkNotEmptyStr($secret, "secret");
