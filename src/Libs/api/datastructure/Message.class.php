@@ -9,19 +9,21 @@ class Message
 { 
     public $sendToAll = false; // bool, 是否全员发送, 即文档所谓 @all
     public $touser = null; // string array
-    public $toparty = null; // uint array
-    public $totag = null; // uint array 
+    public $toparty = []; // uint array
+    public $totag = []; // uint array 
     public $agentid = null; // uint
     public $safe = null; // uint, 表示是否是保密消息，0表示否，1表示是，默认0 
     public $messageContent = null; // xxxMessageContent
 
 	public function CheckMessageSendArgs()
     { 
+    	if (is_null($this->touser)) throw new QyApiError("touser is empty");
         if (count($this->touser) > 1000) throw new QyApiError("touser should be no more than 1000");
         if (count($this->toparty) > 100) throw new QyApiError("toparty should be no more than 100");
         if (count($this->totag) > 100) throw new QyApiError("toparty should be no more than 100");
 
         if (is_null($this->messageContent)) throw new QyApiError("messageContent is empty");
+
         $this->messageContent->CheckMessageSendArgs();
     }
 
@@ -30,12 +32,12 @@ class Message
         $args = array();
 
         if (true == $this->sendToAll) {
-		    Utils::setIfNotNull("@all", "touser", $args);
+		    Utils::setIfNotNull("@all", "touser", $args); 
         } else { 
             //
             $touser_string = null;
             foreach($this->touser as $item) { 
-                $touser_string = $touser_string . $item . "|";
+                $touser_string = $touser_string . $item . "|"; 
             }
 		    Utils::setIfNotNull($touser_string, "touser", $args);
 
