@@ -2,6 +2,9 @@
     "name": "elutiger/weworkapi-for-laravel5",
     "description": "weworkapi for laravel5",
     "license": "MIT",
+    "require": {
+        "predis/predis": "^1.1"
+    },
     "authors": [
         {
             "name": "elutiger",
@@ -12,13 +15,13 @@
         "psr-4": {
             "Elutiger\\Weworkapi\\": "src/"
         }
-    },  
+    },
     "extra": {
         "laravel": {
             "providers": [
                 "Elutiger\\Weworkapi\\WeworkapiServiceProvider"
             ]
         }
-    }, 
+    },
     "require": {}
 }

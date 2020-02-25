@@ -55,7 +55,8 @@ abstract class API
     const GET_USER_DETAIL   = '/cgi-bin/user/getuserdetail?access_token=ACCESS_TOKEN';
 
     const GET_TICKET        = '/cgi-bin/ticket/get?access_token=ACCESS_TOKEN';
-    conST GET_JSAPI_TICKET  = '/cgi-bin/get_jsapi_ticket?access_token=ACCESS_TOKEN';
+    const GET_JSAPI_TICKET  = '/cgi-bin/get_jsapi_ticket?access_token=ACCESS_TOKEN';
+    const GET_JSAPI_AGENT_TICKET  = '/cgi-bin/ticket/get?access_token=ACCESS_TOKEN&type=agent_config';
 
     const GET_CHECKIN_OPTION = '/cgi-bin/checkin/getcheckinoption?access_token=ACCESS_TOKEN';
     const GET_CHECKIN_DATA  = '/cgi-bin/checkin/getcheckindata?access_token=ACCESS_TOKEN';
@@ -80,28 +81,42 @@ abstract class API
     const SET_AGENT_SCOPE   = '/cgi-bin/agent/set_scope';
     const SET_CONTACT_SYNC_SUCCESS = '/cgi-bin/sync/contact_sync_success';
 
-    protected function GetAccessToken() { }
-    protected function RefreshAccessToken() { }
+    protected function GetAccessToken()
+    {
+    }
+    protected function RefreshAccessToken()
+    {
+    }
 
-    protected function GetSuiteAccessToken() { }
-    protected function RefreshSuiteAccessToken() { }
+    protected function GetSuiteAccessToken()
+    {
+    }
+    protected function RefreshSuiteAccessToken()
+    {
+    }
 
-    protected function GetProviderAccessToken() { }
-    protected function RefreshProviderAccessToken() { }
+    protected function GetProviderAccessToken()
+    {
+    }
+    protected function RefreshProviderAccessToken()
+    {
+    }
 
     protected function _HttpCall($url, $method, $args)
     {
-        if ('POST' == $method) { 
+        if ('POST' == $method) {
             $url = HttpUtils::MakeUrl($url);
             $this->_HttpPostParseToJson($url, $args);
             $this->_CheckErrCode();
-        } else if ('GET' == $method) { 
-            if (count($args) > 0) { 
+        } else if ('GET' == $method) {
+            if (count($args) > 0) {
                 foreach ($args as $key => $value) {
-                    if ($value == null) continue;
+                    if ($value == null) {
+                        continue;
+                    }
                     if (strpos($url, '?')) {
                         $url .= ('&'.$key.'='.$value);
-                    } else { 
+                    } else {
                         $url .= ('?'.$key.'='.$value);
                     }
                 }
@@ -109,12 +124,12 @@ abstract class API
             $url = HttpUtils::MakeUrl($url);
             $this->_HttpGetParseToJson($url);
             $this->_CheckErrCode();
-        } else { 
+        } else {
             throw new QyApiError('wrong method');
         }
     }
 
-    protected function _HttpGetParseToJson($url, $refreshTokenWhenExpired=true)
+    protected function _HttpGetParseToJson($url, $refreshTokenWhenExpired = true)
     {
         $retryCnt = 0;
         $this->rspJson = null;
@@ -136,26 +151,28 @@ abstract class API
                 $token = $this->GetAccessToken();
                 $realUrl = str_replace("ACCESS_TOKEN", $token, $url);
                 $tokenType = "ACCESS_TOKEN";
-            } else { 
+            } else {
                 $tokenType = "NO_TOKEN";
             }
 
             $this->rspRawStr = HttpUtils::httpGet($realUrl);
 
-            if ( ! Utils::notEmptyStr($this->rspRawStr)) throw new QyApiError("empty response"); 
+            if (! Utils::notEmptyStr($this->rspRawStr)) {
+                throw new QyApiError("empty response");
+            }
             //
             $this->rspJson = json_decode($this->rspRawStr, true/*to array*/);
             if (strpos($this->rspRawStr, "errcode") !== false) {
                 $errCode = Utils::arrayGet($this->rspJson, "errcode");
                 if ($errCode == 40014 || $errCode == 42001 || $errCode == 42007 || $errCode == 42009) { // token expired
                     if ("NO_TOKEN" != $tokenType && true == $refreshTokenWhenExpired) {
-                        if ("ACCESS_TOKEN" == $tokenType) { 
+                        if ("ACCESS_TOKEN" == $tokenType) {
                             $this->RefreshAccessToken();
                         } else if ("SUITE_ACCESS_TOKEN" == tokenType) {
                             $this->RefreshSuiteAccessToken();
                         } else if ("PROVIDER_ACCESS_TOKEN" == tokenType) {
                             $this->RefreshProviderAccessToken();
-                        } 
+                        }
                         $retryCnt += 1;
                         continue;
                     }
@@ -165,7 +182,7 @@ abstract class API
         }
     }
 
-    protected function _HttpPostParseToJson($url, $args, $refreshTokenWhenExpired=true, $isPostFile=false)
+    protected function _HttpPostParseToJson($url, $args, $refreshTokenWhenExpired = true, $isPostFile = false)
     {
         $postData = $args;
         if (!$isPostFile) {
@@ -173,7 +190,8 @@ abstract class API
                 $postData = HttpUtils::Array2Json($args);
             }
         }
-        $this->rspJson = null; $this->rspRawStr = null;
+        $this->rspJson = null;
+        $this->rspRawStr = null;
 
         $retryCnt = 0;
         while ($retryCnt < 2) {
@@ -192,14 +210,16 @@ abstract class API
                 $token = $this->GetAccessToken();
                 $realUrl = str_replace("ACCESS_TOKEN", $token, $url);
                 $tokenType = "ACCESS_TOKEN";
-            } else { 
+            } else {
                 $tokenType = "NO_TOKEN";
             }
 
 
             $this->rspRawStr = HttpUtils::httpPost($realUrl, $postData);
 
-            if ( ! Utils::notEmptyStr($this->rspRawStr)) throw new QyApiError("empty response"); 
+            if (! Utils::notEmptyStr($this->rspRawStr)) {
+                throw new QyApiError("empty response");
+            }
 
             $json = json_decode($this->rspRawStr, true/*to array*/);
             $this->rspJson = $json;
@@ -207,11 +227,11 @@ abstract class API
             $errCode = Utils::arrayGet($this->rspJson, "errcode");
             if ($errCode == 40014 || $errCode == 42001 || $errCode == 42007 || $errCode == 42009) { // token expired
                 if ("NO_TOKEN" != $tokenType && true == $refreshTokenWhenExpired) {
-                    if ("ACCESS_TOKEN" == $tokenType) { 
+                    if ("ACCESS_TOKEN" == $tokenType) {
                         $this->RefreshAccessToken();
                     } else if ("SUITE_ACCESS_TOKEN" == tokenType) {
                         $this->RefreshSuiteAccessToken();
-                    } else if ("PROVIDER_ACCESS_TOKEN" == tokenType) { 
+                    } else if ("PROVIDER_ACCESS_TOKEN" == tokenType) {
                         $this->RefreshProviderAccessToken();
                     }
                     $retryCnt += 1;
@@ -221,27 +241,31 @@ abstract class API
 
             return $json;
         }
-    } 
+    }
 
 
     protected function _CheckErrCode()
     {
         $rsp = $this->rspJson;
         $raw = $this->rspRawStr;
-        if (is_null($rsp))
+        if (is_null($rsp)) {
             return;
+        }
 
-        if (!is_array($rsp))
+        if (!is_array($rsp)) {
             throw new ParameterError("invalid type " . gettype($rsp));
+        }
         if (!array_key_exists("errcode", $rsp)) {
             return;
         }
         $errCode = $rsp["errcode"];
-        if (!is_int($errCode))
+        if (!is_int($errCode)) {
             throw new QyApiError(
-                "invalid errcode type " . gettype($errCode) . ":" . $raw);
-        if ($errCode != 0)
+                "invalid errcode type " . gettype($errCode) . ":" . $raw
+            );
+        }
+        if ($errCode != 0) {
             throw new QyApiError("response error:" . $raw);
+        }
     }
-
 }

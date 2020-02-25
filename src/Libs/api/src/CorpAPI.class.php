@@ -1,10 +1,11 @@
 <?php
-
 namespace Elutiger\Weworkapi;
+
+use Redis;
 
 /*
  * Copyright (C) 2017 All rights reserved.
- *   
+ *
  * @File CorpAPI.class.php
  * @Brief : 为企业开放的接口
  * @Author abelzhu, abelzhu@tencent.com
@@ -32,7 +33,7 @@ include_once(__DIR__."/../datastructure/CheckinOption.class.php");
 include_once(__DIR__."/../datastructure/CheckinData.class.php");
 include_once(__DIR__."/../datastructure/ApprovalData.class.php");
 include_once(__DIR__."/../datastructure/Pay.class.php");
-include_once(__DIR__."/../datastructure/Invoice.class.php"); 
+include_once(__DIR__."/../datastructure/Invoice.class.php");
 
 
 class CorpAPI extends API
@@ -40,30 +41,32 @@ class CorpAPI extends API
     private $corpId = null;
     private $secret = null;
     protected $accessToken = null;
+    private $agentId = null;
 
     /**
      * @brief __construct : 构造函数，
      * @note 企业进行自定义开发调用, 请传参 corpid + secret, 不用关心accesstoken，本类会自动获取并刷新
      */
-    public function __construct($corpId=null, $secret=null)
+    public function __construct($corpId = null, $secret = null)
     {
         Utils::checkNotEmptyStr($corpId, "corpid");
         Utils::checkNotEmptyStr($secret, "secret");
 
         $this->corpId = $corpId;
         $this->secret = $secret;
+        $this->agentId = config('weworkapi.APP_ID');
     }
     /**
      * @brief init : 初始化函数，
      * @author elutiger, elutiger@qq.com
      * @note 企业进行自定义开发调用, 请传参 corpid + secret, 不用关心accesstoken，本类会自动获取并刷新
-     */    
-    public function init($corpId=null, $secret=null)
+     */
+    public function init($agentId = null, $secret = null)
     {
-        Utils::checkNotEmptyStr($corpId, "corpid");
+        Utils::checkNotEmptyStr($agentId, "corpid");
         Utils::checkNotEmptyStr($secret, "secret");
 
-        $this->corpId = $corpId;
+        $this->agentId = $agentId;
         $this->secret = $secret;
     }
 
@@ -73,21 +76,30 @@ class CorpAPI extends API
      *
      * @return : string accessToken
      */
-    protected function GetAccessToken()
+    public function GetAccessToken()
     {
-        if ( ! Utils::notEmptyStr($this->accessToken)) { 
+        $access_token_key = 'wework:access_token:'.$this->corpId.':'.$this->agentId;
+        if (Redis::exists($access_token_key)) {
+            return Redis::get($access_token_key);
+        }
+        if (! Utils::notEmptyStr($this->accessToken)) {
             $this->RefreshAccessToken();
-        } 
+
+            Redis::set($access_token_key, $this->accessToken);
+            Redis::expire($access_token_key, 7200);
+        }
         return $this->accessToken;
     }
 
     protected function RefreshAccessToken()
     {
-        if (!Utils::notEmptyStr($this->corpId) || !Utils::notEmptyStr($this->secret))
+        if (!Utils::notEmptyStr($this->corpId) || !Utils::notEmptyStr($this->secret)) {
             throw new ParameterError("invalid corpid or secret");
+        }
 
         $url = HttpUtils::MakeUrl(
-            "/cgi-bin/gettoken?corpid={$this->corpId}&corpsecret={$this->secret}");
+            "/cgi-bin/gettoken?corpid={$this->corpId}&corpsecret={$this->secret}"
+        );
         $this->_HttpGetParseToJson($url, false);
         $this->_CheckErrCode();
 
@@ -121,8 +133,8 @@ class CorpAPI extends API
      */
     public function UserGet($userid)
     {
-        Utils::checkNotEmptyStr($userid, "userid"); 
-        self::_HttpCall(self::USER_GET, 'GET', array('userid' => $userid)); 
+        Utils::checkNotEmptyStr($userid, "userid");
+        self::_HttpCall(self::USER_GET, 'GET', array('userid' => $userid));
         return User::Array2User($this->rspJson);
     }
 
@@ -142,7 +154,7 @@ class CorpAPI extends API
 
     /**
      * @brief UserDelete : 删除成员
-     * 
+     *
      * @link https://work.weixin.qq.com/api/doc#10030
      *
      * @param $userid : string
@@ -150,7 +162,7 @@ class CorpAPI extends API
     public function UserDelete($userid)
     {
         Utils::checkNotEmptyStr($userid, "userid");
-        self::_HttpCall(self::USER_DELETE, 'GET', array('userid' => $userid)); 
+        self::_HttpCall(self::USER_DELETE, 'GET', array('userid' => $userid));
     }
 
     /**
@@ -180,8 +192,8 @@ class CorpAPI extends API
      */
     public function UserSimpleList($department_id, $fetchChild)
     {
-        Utils::checkIsUInt($department_id, "department_id"); 
-        self::_HttpCall(self::USER_SIMPLE_LIST, 'GET', array('department_id'=>$department_id, 'fetch_child'=>$fetchChild)); 
+        Utils::checkIsUInt($department_id, "department_id");
+        self::_HttpCall(self::USER_SIMPLE_LIST, 'GET', array('department_id'=>$department_id, 'fetch_child'=>$fetchChild));
         return User::Array2UserList($this->rspJson);
     }
 
@@ -193,12 +205,12 @@ class CorpAPI extends API
      * @param $departmentId : uint
      * @param $fetchChild : 1/0 是否递归获取子部门下面的成员
      *
-     * @return 
+     * @return
      */
     public function UserList($departmentId, $fetchChild)
     {
         Utils::checkIsUInt($departmentId, "departmentId");
-        self::_HttpCall(self::USER_LIST, 'GET', array('department_id'=>$departmentId, 'fetch_child'=>$fetchChild)); 
+        self::_HttpCall(self::USER_LIST, 'GET', array('department_id'=>$departmentId, 'fetch_child'=>$fetchChild));
         return User::Array2UserList($this->rspJson);
     }
 
@@ -214,13 +226,13 @@ class CorpAPI extends API
      */
     public function UserId2OpenId($userid, &$openId, $agentid = null, &$appId = null)
     {
-        Utils::checkNotEmptyStr($userid, "userid"); 
-        if (is_null($agentid)) { 
+        Utils::checkNotEmptyStr($userid, "userid");
+        if (is_null($agentid)) {
             $args = array("userid" => $userid);
-        } else { 
+        } else {
             $args = array("userid" => $userid, "agentid" => $agentid);
-        } 
-        self::_HttpCall(self::USERID_TO_OPENID, 'POST', $args); 
+        }
+        self::_HttpCall(self::USERID_TO_OPENID, 'POST', $args);
         $openId = Utils::arrayGet($this->rspJson, "openid");
         $appId = Utils::arrayGet($this->rspJson, "appid");
     }
@@ -235,9 +247,9 @@ class CorpAPI extends API
      */
     public function openId2UserId($openId, &$userid)
     {
-        Utils::checkNotEmptyStr($openId, "openid"); 
+        Utils::checkNotEmptyStr($openId, "openid");
         $args = array("openid" => $openId);
-        self::_HttpCall(self::OPENID_TO_USERID, 'POST', $args); 
+        self::_HttpCall(self::OPENID_TO_USERID, 'POST', $args);
         $userid= Utils::arrayGet($this->rspJson, "userid");
     }
 
@@ -267,9 +279,9 @@ class CorpAPI extends API
      */
     public function DepartmentCreate(Department $department)
     {
-        Department::CheckDepartmentCreateArgs($department); 
+        Department::CheckDepartmentCreateArgs($department);
         $args = Department::Department2Array($department);
-        self::_HttpCall(self::DEPARTMENT_CREATE, 'POST', $args); 
+        self::_HttpCall(self::DEPARTMENT_CREATE, 'POST', $args);
         return Utils::arrayGet($this->rspJson, "id");
     }
 
@@ -282,9 +294,9 @@ class CorpAPI extends API
      */
     public function DepartmentUpdate(Department $department)
     {
-        Department::CheckDepartmentUpdateArgs($department); 
+        Department::CheckDepartmentUpdateArgs($department);
         $args = Department::Department2Array($department);
-        self::_HttpCall(self::DEPARTMENT_UPDATE, 'POST', $args); 
+        self::_HttpCall(self::DEPARTMENT_UPDATE, 'POST', $args);
     }
 
     /**
@@ -296,7 +308,7 @@ class CorpAPI extends API
      */
     public function DepartmentDelete($departmentId)
     {
-        Utils::checkIsUInt($departmentId, "departmentId"); 
+        Utils::checkIsUInt($departmentId, "departmentId");
         self::_HttpCall(self::DEPARTMENT_DELETE, 'GET', array('id'=>$departmentId));
     }
 
@@ -310,7 +322,7 @@ class CorpAPI extends API
      * @return : Department array
      */
     public function DepartmentList($departmentId = null)
-    { 
+    {
         self::_HttpCall(self::DEPARTMENT_LIST, 'GET', array('id'=>$departmentId));
         return Department::Array2DepartmentList($this->rspJson);
     }
@@ -329,9 +341,9 @@ class CorpAPI extends API
      */
     public function TagCreate(Tag $tag)
     {
-        Tag::CheckTagCreateArgs($tag); 
+        Tag::CheckTagCreateArgs($tag);
         $args = Tag::Tag2Array($tag);
-        self::_HttpCall(self::TAG_CREATE, 'POST', $args); 
+        self::_HttpCall(self::TAG_CREATE, 'POST', $args);
         return Utils::arrayGet($this->rspJson, "tagid");
     }
 
@@ -344,9 +356,9 @@ class CorpAPI extends API
      */
     public function TagUpdate(Tag $tag)
     {
-        Tag::CheckTagUpdateArgs($tag); 
+        Tag::CheckTagUpdateArgs($tag);
         $args = Tag::Tag2Array($tag);
-        self::_HttpCall(self::TAG_UPDATE, 'POST', $args); 
+        self::_HttpCall(self::TAG_UPDATE, 'POST', $args);
     }
 
     /**
@@ -392,15 +404,15 @@ class CorpAPI extends API
      * @note 1: userIdList/partyIdList 不能同时为空
      * @note 2: 如果存在不合法的 userid/partyid, 不会throw Exception，但是会填充invalidUserIdList/invalidPartyIdList
      */
-    public function TagAddUser($tagid, $userIdList=array(), $partyIdList=array(), &$invalidUserIdList, &$invalidPartyIdList)
+    public function TagAddUser($tagid, $userIdList = array(), $partyIdList = array(), &$invalidUserIdList, &$invalidPartyIdList)
     {
-        Tag::CheckTagAddUserArgs($tagid, $userIdList, $partyIdList); 
+        Tag::CheckTagAddUserArgs($tagid, $userIdList, $partyIdList);
         $args = Tag::ToTagAddUserArray($tagid, $userIdList, $partyIdList);
 
-        self::_HttpCall(self::TAG_ADD_USER, 'POST', $args); 
+        self::_HttpCall(self::TAG_ADD_USER, 'POST', $args);
 
         $invalidUserIdList_string = utils::arrayGet($this->rspJson, "invalidlist");
-        $invalidUserIdList = explode('|',$invalidUserIdList_string);
+        $invalidUserIdList = explode('|', $invalidUserIdList_string);
         $invalidPartyIdList = utils::arrayGet($this->rspJson, "invalidparty");
     }
 
@@ -420,13 +432,13 @@ class CorpAPI extends API
      */
     public function TagDeleteUser($tagid, $userIdList, $partyIdList, &$invalidUserIdList, &$invalidPartyIdList)
     {
-        Tag::CheckTagAddUserArgs($tagid, $userIdList, $partyIdList); 
+        Tag::CheckTagAddUserArgs($tagid, $userIdList, $partyIdList);
         $args = Tag::ToTagAddUserArray($tagid, $userIdList, $partyIdList);
 
-        self::_HttpCall(self::TAG_DELETE_USER, 'POST', $args); 
+        self::_HttpCall(self::TAG_DELETE_USER, 'POST', $args);
 
         $invalidUserIdList_string = utils::arrayGet($this->rspJson, "invalidlist");
-        $invalidUserIdList = explode('|',$invalidUserIdList_string);
+        $invalidUserIdList = explode('|', $invalidUserIdList_string);
         $invalidPartyIdList = utils::arrayGet($this->rspJson, "invalidparty");
     }
 
@@ -439,7 +451,7 @@ class CorpAPI extends API
      */
     public function TagGetList()
     {
-        self::_HttpCall(self::TAG_GET_LIST, 'GET', array()); 
+        self::_HttpCall(self::TAG_GET_LIST, 'GET', array());
         return Tag::Array2TagList($this->rspJson);
     }
 
@@ -458,7 +470,7 @@ class CorpAPI extends API
         $this->_CheckErrCode();
 
         return Utils::arrayGet($this->rspJson, "jobid");
-    } 
+    }
 
     /**
      * @brief BatchSyncUser : 增量更新成员
@@ -513,13 +525,13 @@ class CorpAPI extends API
      */
     public function BatchJobGetResult($jobId)
     {
-        self::_HttpCall(self::BATCH_JOB_GET_RESULT, 'GET', array('jobid'=>$jobId)); 
+        self::_HttpCall(self::BATCH_JOB_GET_RESULT, 'GET', array('jobid'=>$jobId));
         return Batch::Array2BatchJobResult($this->rspJson);
     }
 
     //
     // ------------------------- 邀请成员 --------------------------------------
-    // 
+    //
     /**
         * @brief BatchInvite : 邀请成员
         *
@@ -534,19 +546,23 @@ class CorpAPI extends API
         * @param $invalidTagIdList : output uint array
      */
     public function BatchInvite(
-        $userIdList=null, $partyIdList=null, $tagIdList=null,
-        &$invalidUserIdList, &$invalidPartyIdList, &$invalidTagIdList)
-    {
+        $userIdList = null,
+        $partyIdList = null,
+        $tagIdList = null,
+        &$invalidUserIdList,
+        &$invalidPartyIdList,
+        &$invalidTagIdList
+    ) {
         if (is_null($userIdList) && is_null($partyIdList) && is_null($tagIdList)) {
             throw QyApiError("input can not be all null");
         }
         $args = array('user'=>$userIdList, 'party'=>$partyIdList, 'tag'=>$tagIdList);
-        self::_HttpCall(self::BATCH_INVITE, 'POST', $args); 
+        self::_HttpCall(self::BATCH_INVITE, 'POST', $args);
 
         $invalidUserIdList = Utils::arrayGet($this->rspJson, 'invaliduser');
         $invalidPartyIdList = Utils::arrayGet($this->rspJson, 'invalidparty');
         $invalidTagIdList = Utils::arrayGet($this->rspJson, 'invalidtag');
-    } 
+    }
 
     //
     // ------------------------- 应用管理 --------------------------------------
@@ -562,7 +578,7 @@ class CorpAPI extends API
      */
     public function AgentGet($agentid)
     {
-        self::_HttpCall(self::AGENT_GET, 'GET', array('agentid'=>$agentid)); 
+        self::_HttpCall(self::AGENT_GET, 'GET', array('agentid'=>$agentid));
         return Agent::Array2Agent($this->rspJson);
     }
 
@@ -575,10 +591,10 @@ class CorpAPI extends API
      */
     public function AgentSet($agent)
     {
-        Agent::CheckAgentSetArgs($agent); 
+        Agent::CheckAgentSetArgs($agent);
         $args = Agent::Agent2Array($agent);
-        self::_HttpCall(self::AGENT_SET, 'POST', $args); 
-    } 
+        self::_HttpCall(self::AGENT_SET, 'POST', $args);
+    }
 
     /**
      * @brief AgentList : 获取应用列表
@@ -589,7 +605,7 @@ class CorpAPI extends API
      */
     public function AgentGetList()
     {
-        self::_HttpCall(self::AGENT_GET_LIST, 'GET', array()); 
+        self::_HttpCall(self::AGENT_GET_LIST, 'GET', array());
         return Agent::Array2AgentList($this->rspJson);
     }
 
@@ -607,10 +623,10 @@ class CorpAPI extends API
      */
     public function MenuCreate($agentid, Menu $menu)
     {
-        Menu::CheckMenuCreateArgs($agentid, $menu); 
+        Menu::CheckMenuCreateArgs($agentid, $menu);
         $args = Utils::Object2Array($menu);
-        self::_HttpCall(self::MENU_CREATE."&agentid={$agentid}", 'POST', $args); 
-    } 
+        self::_HttpCall(self::MENU_CREATE."&agentid={$agentid}", 'POST', $args);
+    }
 
     /**
      * @brief MenuGet : 获取菜单
@@ -623,7 +639,7 @@ class CorpAPI extends API
      */
     public function MenuGet($agentid)
     {
-        self::_HttpCall(self::MENU_GET, 'GET', array('agentid'=>$agentid)); 
+        self::_HttpCall(self::MENU_GET, 'GET', array('agentid'=>$agentid));
         return Menu::Array2Menu($this->rspJson);
     }
 
@@ -636,13 +652,25 @@ class CorpAPI extends API
      */
     public function MenuDelete($agentid)
     {
-        self::_HttpCall(self::MENU_DELETE, 'GET', array('agentid'=>$agentid)); 
+        self::_HttpCall(self::MENU_DELETE, 'GET', array('agentid'=>$agentid));
     }
 
     //
     // --------------------------- 消息推送 -----------------------------------
     //
     //
+    /**
+     * @brief SendMessage : 发送数组消息
+     *
+     * @link https://work.weixin.qq.com/api/doc#10020
+     *
+     * @param $message : Array
+     */
+    public function SendMessage($data)
+    {
+        $args = HttpUtils::Array2Json($data);
+        self::_HttpCall(self::MESSAGE_SEND, 'POST', $args);
+    }
     /**
      * @brief MessageSend : 发送消息
      *
@@ -653,30 +681,30 @@ class CorpAPI extends API
      * @param $invalidPartyIdList : uint array
      * @param $invalidTagIdList : uint array
      *
-     * @return 
+     * @return
      */
     public function MessageSend(Message $message, &$invalidUserIdList, &$invalidPartyIdList, &$invalidTagIdList)
     {
-        $message->CheckMessageSendArgs(); 
+        $message->CheckMessageSendArgs();
         $args = $message->Message2Array();
 
-        self::_HttpCall(self::MESSAGE_SEND, 'POST', $args); 
+        self::_HttpCall(self::MESSAGE_SEND, 'POST', $args);
 
         $invalidUserIdList_string = utils::arrayGet($this->rspJson, "invaliduser");
         $invalidUserIdList = explode('|', $invalidUserIdList_string);
 
         $invalidPartyIdList_string = utils::arrayGet($this->rspJson, "invalidparty");
         $temp = explode('|', $invalidPartyIdList_string);
-        foreach($temp as $item) {
+        foreach ($temp as $item) {
             $invalidPartyIdList[] = intval($item);
         }
 
         $invalidTagIdList_string = utils::arrayGet($this->rspJson, "invalidtag");
         $temp = explode('|', $invalidTagIdList_string);
-        foreach($temp as $item) {
+        foreach ($temp as $item) {
             $invalidTagIdList[] = intval($item);
         }
-    } 
+    }
     //
     // --------------------------- 素材管理 -----------------------------------
     //
@@ -695,12 +723,12 @@ class CorpAPI extends API
     {
         Utils::checkNotEmptyStr($filePath, "filePath");
         Utils::checkNotEmptyStr($type, "type");
-        if ( ! file_exists($filePath)) { 
+        if (! file_exists($filePath)) {
             throw new QyApiError("file not exists");
         }
 
         // 兼容php5.3-5.6 curl模块的上传操作
-    $args = array();
+        $args = array();
         if (class_exists('\CURLFile')) {
             $args = array('media' => new \CURLFile(realpath($filePath), 'application/octet-stream', basename($filePath)));
         } else {
@@ -722,8 +750,7 @@ class CorpAPI extends API
             $ret = $this->mediaUpload($tmpPath, $type);
             unlink($tmpPath);
             return $ret;
-        }
-        catch (Exception $ex) {
+        } catch (Exception $ex) {
             unlink($tmpPath);
             throw $ex;
         }
@@ -740,11 +767,11 @@ class CorpAPI extends API
      */
     public function MediaGet($media_id)
     {
-        Utils::checkNotEmptyStr($media_id, "media_id"); 
+        Utils::checkNotEmptyStr($media_id, "media_id");
         self::_HttpCall(self::MEDIA_GET, 'GET', array('media_id'=>$media_id));
         return $this->rspRawStr;
     }
-    
+
     /**
      * @brief MediaGet : 上传永久图片
      *
@@ -755,10 +782,10 @@ class CorpAPI extends API
      *
      * @return : string。上传图片后，得到的图片永久URL。注意仅能用于图文消息（mpnews）正文中的图片展示
      */
-    public function UploadImage($filePath, $md5=null)
+    public function UploadImage($filePath, $md5 = null)
     {
         Utils::checkNotEmptyStr($filePath, "filePath");
-        if ( ! file_exists($filePath)) { 
+        if (! file_exists($filePath)) {
             throw new QyApiError("file not exists");
         }
 
@@ -773,7 +800,7 @@ class CorpAPI extends API
         var_dump($args);
 
         $url = HttpUtils::MakeUrl("/cgi-bin/media/uploadimg?access_token=ACCESS_TOKEN");
-        if ($md5 != null) { 
+        if ($md5 != null) {
             $url = $url . "&md5={$md5}";
         }
 
@@ -816,14 +843,73 @@ class CorpAPI extends API
     {
         Utils::checkNotEmptyStr($ticket, "ticket");
         $args = array("user_ticket" => $ticket);
-        self::_HttpCall(self::GET_USER_DETAIL, 'POST', $args); 
+        self::_HttpCall(self::GET_USER_DETAIL, 'POST', $args);
         return UserDetailByUserTicket::Array2UserDetailByUserTicket($this->rspJson);
     }
 
     //
     // ---------------------- 移动端SDK ---------------------------------------
     //
-    //
+    /**
+     * @brief getSignPackage : 获取JS-SDK签名包
+     *
+     * @link https://work.weixin.qq.com/api/doc/90000/90136/90506 JS-SDK使用权限签名算法
+     *
+     * @return : string ticket
+     */
+    public function getSignPackage()
+    {
+
+        // 注意 URL 一定要动态获取，不能 hardcode.
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $url = "$protocol$_SERVER[SERVER_NAME]$_SERVER[REQUEST_URI]";
+
+        $timestamp = time();
+        $nonceStr = $this->createNonceStr();
+
+        $signature_key1 = 'wework:jsapiTicket:'.$this->corpId.':'.config('weworkapi.APP_ID');
+        $signature_key2 = 'wework:jsapiAgentTicket:'.$this->corpId.':'.config('weworkapi.APP_ID');
+
+        $jsapiTicket = '';
+        if (Redis::exists($signature_key1)) {
+            $jsapiTicket = Redis::get($signature_key1);
+        } else {
+            $jsapiTicket = $this->JsApiTicketGet();
+            Redis::set($signature_key1, $jsapiTicket);
+            Redis::expire($signature_key1, 7200);
+        }
+        $signature = $this->JsApiSignatureGet($jsapiTicket, $nonceStr, $timestamp, $url);
+
+        $jsapiAgentTicket = '';
+        if (Redis::exists($signature_key2)) {
+            $jsapiAgentTicket = Redis::get($signature_key2);
+        } else {
+            $jsapiAgentTicket = $this->JsApiAgentTicketGet();
+            Redis::set($signature_key2, $jsapiAgentTicket);
+            Redis::expire($signature_key2, 7200);
+        }
+        $signature_agent = $this->JsApiSignatureGet($jsapiAgentTicket, $nonceStr, $timestamp, $url);
+
+        $signPackage = array(
+          "appId"     => $this->corpId,
+          "nonceStr"  => $nonceStr,
+          "timestamp" => $timestamp,
+          "url"       => $url,
+          "signature" => $signature,
+          "agentId"   => config('weworkapi.APP_ID'),
+          "signature_agent" => $signature_agent
+        );
+        return $signPackage;
+    }
+    private function createNonceStr($length = 16)
+    {
+        $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        $str = "";
+        for ($i = 0; $i < $length; $i++) {
+            $str .= substr($chars, mt_rand(0, strlen($chars) - 1), 1);
+        }
+        return $str;
+    }
     /**
      * @brief TicketGet : 获取电子发票ticket
      *
@@ -846,14 +932,29 @@ class CorpAPI extends API
      */
     public function JsApiTicketGet()
     {
-        self::_HttpCall(self::GET_JSAPI_TICKET, 'GET', array()); 
+        self::_HttpCall(self::GET_JSAPI_TICKET, 'GET', array());
         return $this->rspJson["ticket"];
     }
-    
+    /**
+     * @brief JsApiAgentTicketGet : 获取应用级别jsapi_ticket
+     *
+     * @link https://work.weixin.qq.com/api/doc#10029/获取jsapi_ticket
+     *
+     * @return : string ticket
+     */
+    //签名的jsapi_ticket必须使用以下接口获取。且必须用wx.agentConfig中的agentid对应的应用secret去获取access_token。
+    //签名用的noncestr和timestamp必须与wx.agentConfig中的nonceStr和timestamp相同。
+    public function JsApiAgentTicketGet()
+    {
+        self::_HttpCall(self::GET_JSAPI_AGENT_TICKET, 'GET', array());
+        return $this->rspJson["ticket"];
+    }
+
+
     /**
      * @brief JsApiSignatureGet : 计算jsapi的签名
      *
-     * @link https://work.weixin.qq.com/api/doc#10029/%E7%AD%BE%E5%90%8D%E7%AE%97%E6%B3%95 
+     * @link https://work.weixin.qq.com/api/doc#10029/%E7%AD%BE%E5%90%8D%E7%AE%97%E6%B3%95
          *
      * @param $jsapiTicket : string
      * @param $nonceStr : string
@@ -883,13 +984,15 @@ class CorpAPI extends API
      * @return  : CheckinOption
      */
     public function CheckinOptionGet($datetime, $useridlist)
-    { 
+    {
         Utils::checkIsUInt($datetime, "datetime");
         Utils::checkNotEmptyArray($useridlist, "useridlist");
-        if (count($useridlist) > 100) throw new QyApiError("no more than 100 user once"); 
+        if (count($useridlist) > 100) {
+            throw new QyApiError("no more than 100 user once");
+        }
         $args = array("datetime" => $datetime, "useridlist" => $useridlist);
 
-        self::_HttpCall(self::GET_CHECKIN_OPTION, 'POST', $args); 
+        self::_HttpCall(self::GET_CHECKIN_OPTION, 'POST', $args);
 
         return CheckinOption::ParseFromArray($this->rspJson);
     }
@@ -907,20 +1010,22 @@ class CorpAPI extends API
      * @return  : CheckinDataList
      */
     public function CheckinDataGet($opencheckindatatype, $starttime, $endtime, $useridlist)
-    { 
+    {
         Utils::checkIsUInt($opencheckindatatype, "opencheckindatatype");
         Utils::checkIsUInt($starttime, "starttime");
         Utils::checkIsUInt($endtime, "endtime");
         Utils::checkNotEmptyArray($useridlist, "useridlist");
-        if (count($useridlist) > 100) throw new QyApiError("no more than 100 user once");
+        if (count($useridlist) > 100) {
+            throw new QyApiError("no more than 100 user once");
+        }
 
         $args = array(
-            "opencheckindatatype" => $opencheckindatatype, 
+            "opencheckindatatype" => $opencheckindatatype,
             "starttime" => $starttime,
             "endtime" => $endtime,
             "useridlist" => $useridlist,
         );
-        self::_HttpCall(self::GET_CHECKIN_DATA, 'POST', $args); 
+        self::_HttpCall(self::GET_CHECKIN_DATA, 'POST', $args);
         return CheckinDataList::ParseFromArray($this->rspJson);
     }
 
@@ -935,8 +1040,8 @@ class CorpAPI extends API
      *
      * @return  : ApprovalDataList
      */
-    public function ApprovalDataGet($starttime, $endtime, $next_spnum=null)
-    { 
+    public function ApprovalDataGet($starttime, $endtime, $next_spnum = null)
+    {
         Utils::checkIsUInt($starttime, "starttime");
         Utils::checkIsUInt($endtime, "endtime");
 
@@ -945,22 +1050,22 @@ class CorpAPI extends API
         Utils::setIfNotNull($endtime, "endtime", $args);
         Utils::setIfNotNull($next_spnum, "next_spnum", $args);
 
-        self::_HttpCall(self::GET_APPROVAL_DATA, 'POST', $args); 
+        self::_HttpCall(self::GET_APPROVAL_DATA, 'POST', $args);
         return ApprovalDataList::ParseFromArray($this->rspJson);
     }
 
     //
     // ---------------------- 企业支付 ----------------------------------------
     //
-    static private function _HttpPostXml($url, $args)
+    private static function _HttpPostXml($url, $args)
     {
-        $postData = Utils::Array2Xml("xml", $args); 
+        $postData = Utils::Array2Xml("xml", $args);
         $this->rspRawStr = HttpUtils::httpPost($url, $postData);
         return Utils::Xml2Array($this->rspRawStr);
-    } 
-    static private function _CheckXmlRetCode($rsp)
+    }
+    private static function _CheckXmlRetCode($rsp)
     {
-        if ($rsp["return_code"] != "SUCCESS") { 
+        if ($rsp["return_code"] != "SUCCESS") {
             throw new QyApiError("response error:" . $rsp);
         }
     }
@@ -973,14 +1078,14 @@ class CorpAPI extends API
      * @param $SendWorkWxRedpackReq
      *
      * @return : SendWorkWxRedpackRsp
-     *  
+     *
      * @note : 本接口只检查通信是否正常，业务结果需调用方自行判断，参看文档
      */
-    static public function SendWorkWxRedpack(SendWorkWxRedpackReq $SendWorkWxRedpackReq)
+    public static function SendWorkWxRedpack(SendWorkWxRedpackReq $SendWorkWxRedpackReq)
     {
-        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/sendworkwxredpack"; 
+        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/sendworkwxredpack";
         $args = Utils::Object2Array($SendWorkWxRedpackReq);
-        $SendWorkWxRedpackRsp = self::_HttpPostXml($url, $args); 
+        $SendWorkWxRedpackRsp = self::_HttpPostXml($url, $args);
         self::_CheckXmlRetCode($SendWorkWxRedpackRsp);
         return $SendWorkWxRedpackRsp;
     }
@@ -994,11 +1099,11 @@ class CorpAPI extends API
      *
      * @return : QueryWorkWxRedpackRsp
      */
-    static public function QueryWorkWxRedpack(QueryWorkWxRedpackReq $QueryWorkWxRedpackReq)
+    public static function QueryWorkWxRedpack(QueryWorkWxRedpackReq $QueryWorkWxRedpackReq)
     {
-        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/queryworkwxredpack"; 
+        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/queryworkwxredpack";
         $args = Utils::Object2Array($QueryWorkWxRedpackReq);
-        $QueryWorkWxRedpackRsp = self::_HttpPostXml($url, $args); 
+        $QueryWorkWxRedpackRsp = self::_HttpPostXml($url, $args);
         self::_CheckXmlRetCode($QueryWorkWxRedpackRsp);
         return $QueryWorkWxRedpackRsp;
     }
@@ -1012,11 +1117,11 @@ class CorpAPI extends API
      *
      * @return : PayWwSptrans2PocketRsp
      */
-    static public function PayWwSptrans2Pocket(PayWwSptrans2PocketReq $PayWwSptrans2PocketReq)
+    public static function PayWwSptrans2Pocket(PayWwSptrans2PocketReq $PayWwSptrans2PocketReq)
     {
-        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/paywwsptrans2pocket"; 
+        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/paywwsptrans2pocket";
         $args = Utils::Object2Array($PayWwSptrans2PocketReq);
-        $PayWwSptrans2PocketRsp = self::_HttpPostXml($url, $args); 
+        $PayWwSptrans2PocketRsp = self::_HttpPostXml($url, $args);
         self::_CheckXmlRetCode($PayWwSptrans2PocketRsp);
         return $PayWwSptrans2PocketRsp;
     }
@@ -1030,11 +1135,11 @@ class CorpAPI extends API
      *
      * @return : QueryWwSptrans2Pocketsp
      */
-    static public function QueryWwSptrans2Pocket(QueryWwSptrans2PocketReq $QueryWwSptrans2PocketReq)
+    public static function QueryWwSptrans2Pocket(QueryWwSptrans2PocketReq $QueryWwSptrans2PocketReq)
     {
-        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/querywwsptrans2pocket"; 
+        $url = "https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/querywwsptrans2pocket";
         $args = Utils::Object2Array($QueryWwSptrans2PocketReq);
-        $QueryWwSptrans2Pocketsp = self::_HttpPostXml($url, $args); 
+        $QueryWwSptrans2Pocketsp = self::_HttpPostXml($url, $args);
         self::_CheckXmlRetCode($QueryWwSptrans2Pocketsp);
         return $QueryWwSptrans2Pocketsp;
     }
@@ -1053,11 +1158,11 @@ class CorpAPI extends API
      * @return : InvoiceInfo
      */
     public function GetInvoiceInfo($card_id, $encrypt_code)
-    { 
+    {
         Utils::checkNotEmptyStr($card_id, "card_id");
-        Utils::checkNotEmptyStr($encrypt_code, "encrypt_code"); 
-        $args = array("card_id" => $card_id, "encrypt_code" => $encrypt_code); 
-        self::_HttpCall(self::GET_INVOICE_INFO, 'POST', $args); 
+        Utils::checkNotEmptyStr($encrypt_code, "encrypt_code");
+        $args = array("card_id" => $card_id, "encrypt_code" => $encrypt_code);
+        self::_HttpCall(self::GET_INVOICE_INFO, 'POST', $args);
         return Utils::Array2Object($this->rspJson);
     }
 
@@ -1070,15 +1175,15 @@ class CorpAPI extends API
      * @param $encrypt_code : string
      * @param $reimburse_status : string
      *
-     * @return 
+     * @return
      */
     public function UpdateInvoiceStatus($card_id, $encrypt_code, $reimburse_status)
-    { 
+    {
         Utils::checkNotEmptyStr($card_id, "card_id");
         Utils::checkNotEmptyStr($encrypt_code, "encrypt_code");
-        Utils::checkNotEmptyStr($reimburse_status, "reimburse_status"); 
-        $args = array("card_id" => $card_id, "encrypt_code" => $encrypt_code, "reimburse_status" => $reimburse_status); 
-        self::_HttpCall(self::UPDATE_INVOICE_STATUS, 'POST', $args); 
+        Utils::checkNotEmptyStr($reimburse_status, "reimburse_status");
+        $args = array("card_id" => $card_id, "encrypt_code" => $encrypt_code, "reimburse_status" => $reimburse_status);
+        self::_HttpCall(self::UPDATE_INVOICE_STATUS, 'POST', $args);
     }
 
     /**
@@ -1090,9 +1195,9 @@ class CorpAPI extends API
      *
      */
     public function BatchUpdateInvoiceStatus(BatchUpdateInvoiceStatusReq $BatchUpdateInvoiceStatusReq)
-    { 
-        $args = Utils::Object2Array($BatchUpdateInvoiceStatusReq); 
-        self::_HttpCall(self::BATCH_UPDATE_INVOICE_STATUS, 'POST', $args); 
+    {
+        $args = Utils::Object2Array($BatchUpdateInvoiceStatusReq);
+        self::_HttpCall(self::BATCH_UPDATE_INVOICE_STATUS, 'POST', $args);
     }
 
     /**
@@ -1105,9 +1210,9 @@ class CorpAPI extends API
      * @return : BatchGetInvoiceInfoRsp
      */
     public function BatchGetInvoiceInfo(BatchGetInvoiceInfoReq $BatchGetInvoiceInfoReq)
-    { 
-        $args = Utils::Object2Array($BatchGetInvoiceInfoReq); 
-        self::_HttpCall(self::BATCH_GET_INVOICE_INFO, 'POST', $args); 
+    {
+        $args = Utils::Object2Array($BatchGetInvoiceInfoReq);
+        self::_HttpCall(self::BATCH_GET_INVOICE_INFO, 'POST', $args);
         return Utils::Array2Object($this->rspJson);
     }
 
@@ -1115,7 +1220,7 @@ class CorpAPI extends API
     // ------------------------- private --------------------------------------
     //
 
-    static private function WriteTmpFile($buffer)
+    public static function WriteTmpFile($buffer)
     {
         Utils::checkNotEmptyStr($buffer, "buffer");
 
@@ -1140,8 +1245,7 @@ class CorpAPI extends API
                 $writeBytes += $n;
             }
             fclose($handle);
-        }
-        catch (Exception $ex) {
+        } catch (Exception $ex) {
             if (!is_null($handle)) {
                 fclose($handle);
                 unlink($tmpPath);

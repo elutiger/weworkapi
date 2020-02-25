@@ -2,19 +2,19 @@
 
 namespace Elutiger\Weworkapi;
 
-use Illuminate\Support\ServiceProvider; 
+use Illuminate\Support\ServiceProvider;
 use Elutiger\Weworkapi\CorpAPI;
 
 class WeworkapiServiceProvider extends ServiceProvider
 {
-     
+
     /**
      * Indicates if loading of the provider is deferred.
      *
      * @var bool
      */
-    protected $defer = true; 
-     
+    protected $defer = true;
+
 
     /**
      * Register any application services.
@@ -22,16 +22,13 @@ class WeworkapiServiceProvider extends ServiceProvider
      * @return void
      */
     public function register()
-    {  
-       
+    {
+
 
         $this->app->singleton('CorpAPI', function ($app) {
 
-            return  new CorpAPI('ABC','123');  
-
-        }); 
-       
- 
+            return  new CorpAPI(config('weworkapi.CORP_ID'), config('weworkapi.APP_SECRET'));
+        });
     }
 
     public function boot()
@@ -39,7 +36,6 @@ class WeworkapiServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__."/Libs/api/config.php" => config_path('weworkapi.php'),
         ]);
-
     }
 
     /**
@@ -50,6 +46,5 @@ class WeworkapiServiceProvider extends ServiceProvider
     public function provides()
     {
         return ['CorpAPI'];
-    } 
-
+    }
 }
