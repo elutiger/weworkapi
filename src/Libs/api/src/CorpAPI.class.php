@@ -1,7 +1,7 @@
 <?php
 namespace Elutiger\Weworkapi;
 
-use Redis;
+use Illuminate\Support\Facades\Redis;
 
 /*
  * Copyright (C) 2017 All rights reserved.
@@ -105,9 +105,94 @@ class CorpAPI extends API
 
         $this->accessToken = $this->rspJson["access_token"];
     }
-
+    // ------------------------- miniprograme -------------------------------------
+    /**
+     * @brief code2Session : 获取手机号随机串 支持企业获取手机号随机串，该随机串可直接在企业微信终端搜索手机号对应的微信用户。
+     *
+     * @link https://developers.weixin.qq.com/miniprogram/dev/dev_wxwork/dev-doc/qywx-api/login/code2session.html
+     * @param $code : String
+     * @return Array : [
+                  "corpid"=>  "CORPID",
+                  "userid"=> "USERID", //用户在企业内的UserID，对应管理端的帐号，企业内唯一。注意：如果该企业没有关联该小程序，则此处返回加密的userid
+                  "session_key"=> "kJtdi6RF+Dv67QkbLlPGjw==",
+                  "errcode"=> 0,
+                  "errmsg"=> "ok"
+                ]
+     */
+    public function code2Session($code)
+    {
+        $args = array("js_code" => $code);
+        self::_HttpCall(self::GET_SESSION_KEY, 'GET', $args);
+        return $this->rspJson;
+    }
     // ------------------------- 成员管理 -------------------------------------
-    //
+    /**
+     * @brief GetExternalContactList : 获取客户列表
+     *  企业可通过此接口获取指定成员添加的客户列表。客户是指配置了客户联系功能的成员所添加的外部联系人。没有配置客户联系功能的成员，所添加的外部联系人将不会作为客户返回
+     *
+     * @link https://work.weixin.qq.com/api/doc/90000/90135/92113
+     * @param $userid : String
+     * @return Array
+                {
+                    "errcode": 0,
+                    "errmsg": "ok",
+                    "external_contact":{
+                        ...
+                    },
+                    "follow_user":
+                    [  ... ]
+                }
+     */
+    public function GetExternalContactList($userid)
+    {
+        $args = array("userid" => $userid);
+        self::_HttpCall(self::GET_EXTERNAL_CONTACT_LIST, 'GET', $args);
+        return $this->rspJson;
+    }
+    /**
+     * @brief GetExternalContact : 获取客户详情
+     *  企业需要使用“客户联系”secret或配置到“可调用应用”列表中的自建应用secret所获取的accesstoken来调用。
+     *
+     * @link https://work.weixin.qq.com/api/doc/90000/90135/92114
+     * @param $userid : String
+     * @return Array
+                {
+                    "errcode": 0,
+                    "errmsg": "ok",
+                    "external_contact":{
+                        ...
+                    },
+                    "follow_user":
+                    [  ... ]
+                }
+     */
+    public function GetExternalContact($external_userid)
+    {
+        $args = array("external_userid" => $external_userid);
+        self::_HttpCall(self::GET_EXTERNAL_CONTACT, 'GET', $args);
+        return $this->rspJson;
+    }
+    public function UpdateExternalContactRemark($userRemark)
+    {
+        Utils::checkNotEmptyStr($userRemark['userid'], "userid");
+        Utils::checkNotEmptyStr($userRemark['external_userid'], "external_userid");
+        $args = $userRemark;
+        self::_HttpCall(self::UPDATE_EXTERNAL_CONTACT_REMARK, 'POST', $args);
+        return $this->rspJson;
+    }
+    /**
+     * @brief UserMobileHash : 获取手机号随机串 支持企业获取手机号随机串，该随机串可直接在企业微信终端搜索手机号对应的微信用户。
+     *
+     * @link https://work.weixin.qq.com/api/doc/90000/90135/91735
+     * @param $mobile : String
+     * @return  $hashcode [String]
+     */
+    public function UserMobileHash($mobile, &$hashcode)
+    {
+        $args = array("mobile" => $mobile);
+        self::_HttpCall(self::USER_MOBILE_HASH, 'POST', $args);
+        $hashcode = Utils::arrayGet($this->rspJson, "hashcode");
+    }
     /**
      * @brief UserCreate : 创建成员
      *
@@ -137,6 +222,7 @@ class CorpAPI extends API
         self::_HttpCall(self::USER_GET, 'GET', array('userid' => $userid));
         return User::Array2User($this->rspJson);
     }
+
 
     /**
      * @brief UserUpdate : 更新成员

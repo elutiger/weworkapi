@@ -11,6 +11,7 @@ abstract class API
     public $rspJson = null;
     public $rspRawStr = null;
 
+    const USER_MOBILE_HASH = '/cgi-bin/user/get_mobile_hashcode?access_token=ACCESS_TOKEN';
     const USER_CREATE       = '/cgi-bin/user/create?access_token=ACCESS_TOKEN';
     const USER_GET          = '/cgi-bin/user/get?access_token=ACCESS_TOKEN';
     const USER_UPDATE       = '/cgi-bin/user/update?access_token=ACCESS_TOKEN';
@@ -80,6 +81,14 @@ abstract class API
     const GET_REGISTER_INFO = '/cgi-bin/service/get_register_info?provider_access_token=PROVIDER_ACCESS_TOKEN';
     const SET_AGENT_SCOPE   = '/cgi-bin/agent/set_scope';
     const SET_CONTACT_SYNC_SUCCESS = '/cgi-bin/sync/contact_sync_success';
+
+    const GET_SESSION_KEY           = '/cgi-bin/miniprogram/jscode2session?access_token=ACCESS_TOKEN&grant_type=authorization_code';
+    const GET_EXTERNAL_CONTACT      = '/cgi-bin/externalcontact/get?access_token=ACCESS_TOKEN';
+    const GET_EXTERNAL_CONTACT_LIST = '/cgi-bin/externalcontact/list?access_token=ACCESS_TOKEN';
+    const UPDATE_EXTERNAL_CONTACT_REMARK = '/cgi-bin/externalcontact/remark?access_token=ACCESS_TOKEN';
+
+
+
 
     protected function GetAccessToken()
     {
