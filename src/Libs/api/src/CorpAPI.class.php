@@ -1323,13 +1323,13 @@ class CorpAPI extends API
             if ($writeBytes === false) {
                 throw new SysError("write tmp file failed");
             }
-            while ($writeBytes < count($buffer)) {
-                $n = fwrite($handle, substr($buffer, $writeBytes));
-                if ($n === false) {
-                    throw new SysError("write tmp file failed");
-                }
-                $writeBytes += $n;
-            }
+            // while ($writeBytes < count($buffer)) {
+            //     $n = fwrite($handle, substr($buffer, $writeBytes));
+            //     if ($n === false) {
+            //         throw new SysError("write tmp file failed");
+            //     }
+            //     $writeBytes += $n;
+            // }
             fclose($handle);
         } catch (Exception $ex) {
             if (!is_null($handle)) {
